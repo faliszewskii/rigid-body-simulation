@@ -34,6 +34,18 @@ include_directories(${CMAKE_SOURCE_DIR}/dep/inc)
 # Link directories
 link_directories(${CMAKE_SOURCE_DIR}/dep/lib)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(GLAD_GLEW
+        dep/glad/glad.c
+        dep/glad/glad_glfw.h
+    )
+else()
+    set(GLAD_GLEW
+        dep/glew/glad.c
+        dep/glew/glew_glfw.h
+    )
+endif()
+
 set(APP_SRC
         src/interface/gui/GuiBase.cpp
         src/interface/gui/GuiBase.h
@@ -57,20 +69,12 @@ set(APP_SRC
         src/app/Scene.cpp
         src/app/Scene.h
         src/app/entity/light/PointLight.h
-        src/app/entity/point/Point.h)
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(GLAD_GLEW
-        dep/glad/glad.c
-        dep/glad/glad_glfw.h
-    )
-else()
-    set(GLAD_GLEW
-        dep/glew/glad.c
-        dep/glew/glew_glfw.h
-    )
-
-endif()
+        src/app/entity/point/Point.h
+        src/app/entity/axes/Axes.h
+        src/app/entity/cube/Cube.h
+        src/app/rigid/RigidBody.h
+        src/app/rigid/RigidBody.cpp
+        src/app/entity/line/Line.h)
 
 # Add executables
 add_executable(rigid_body_simulation

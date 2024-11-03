@@ -10,8 +10,10 @@
 #include "../interface/camera/BaseCamera.h"
 #include "entity/quad/Quad.h"
 #include "../opengl/shader/Shader.h"
+#include "entity/axes/Axes.h"
 #include "entity/light/PointLight.h"
 #include "entity/point/Point.h"
+#include "rigid/RigidBody.h"
 
 struct AppContext {
     AppContext() = default;
@@ -22,11 +24,16 @@ struct AppContext {
     // Shaders
     std::unique_ptr<Shader> phongShader;
     std::unique_ptr<Shader> pointShader;
+    std::unique_ptr<Shader> colorShader;
 
     // TODO --- App data goes here
     std::unique_ptr<PointLight> light;
     std::unique_ptr<Point> lightBulb;
     std::unique_ptr<Quad> quad;
+
+    std::unique_ptr<Axes> axes;
+    std::unique_ptr<RigidBody> rigidBody;
+
 };
 
 #endif //OPENGL_TEMPLATE_APPCONTEXT_H

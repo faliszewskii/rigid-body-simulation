@@ -15,39 +15,54 @@ Scene::Scene(AppContext &appContext) : appContext(appContext) {
     appContext.phongShader = std::make_unique<Shader>(Shader::createTraditionalShader(
             "../res/shaders/phong/phong.vert", "../res/shaders/phong/phong.frag"));
     appContext.pointShader = std::make_unique<Shader>(Shader::createTraditionalShader(
-            "../res/shaders/point/point.vert", "../res/shaders/point/point.frag"));
+    "../res/shaders/point/point.vert", "../res/shaders/point/point.frag"));
+    appContext.colorShader = std::make_unique<Shader>(Shader::createTraditionalShader(
+            "../res/shaders/basic/position.vert", "../res/shaders/basic/color.frag"));
 
     appContext.quad = std::make_unique<Quad>();
     appContext.light = std::make_unique<PointLight>();
-    appContext.light->position = {0.0f , 0.0f, 0.25f};
     appContext.lightBulb = std::make_unique<Point>();
+
+    appContext.axes = std::make_unique<Axes>();
+    appContext.rigidBody = std::make_unique<RigidBody>();
 }
 
 void Scene::update() {
-    // TODO --- Here goes scene data update.
     appContext.lightBulb->position = appContext.light->position;
     appContext.lightBulb->color = glm::vec4(appContext.light->color, 1);
+
+    appContext.rigidBody->advanceSimulation();
+    appContext.rigidBody->updateTrace();
 }
 
 void Scene::render() {
     appContext.frameBufferManager->bind();
 
-    // TODO --- Here goes scene render.
-    appContext.phongShader->use();
-    appContext.phongShader->setUniform("viewPos", appContext.camera->getViewPosition());
-    appContext.phongShader->setUniform("view", appContext.camera->getViewMatrix());
-    appContext.phongShader->setUniform("projection", appContext.camera->getProjectionMatrix());
-    appContext.phongShader->setUniform("model", glm::identity<glm::mat4>());
-    appContext.phongShader->setUniform("material.hasTexture", false);
-    appContext.phongShader->setUniform("material.albedo", glm::vec4(1.0f, 1.0f, 0.0f, 1.0f));
-    appContext.phongShader->setUniform("material.shininess", 256.f);
-    appContext.light->setupPointLight(*appContext.phongShader);
-    appContext.quad->render();
-
     appContext.pointShader->use();
     appContext.pointShader->setUniform("view", appContext.camera->getViewMatrix());
     appContext.pointShader->setUniform("projection", appContext.camera->getProjectionMatrix());
     appContext.lightBulb->render(*appContext.pointShader);
+
+    appContext.colorShader->use();
+    appContext.colorShader->setUniform("view", appContext.camera->getViewMatrix());
+    appContext.colorShader->setUniform("projection", appContext.camera->getProjectionMatrix());
+    appContext.axes->render(*appContext.colorShader);
+
+    appContext.colorShader->setUniform("model", glm::rotate(glm::identity<glm::mat4>(), glm::radians(-90.0f), glm::vec3(1, 0, 0)));
+    appContext.colorShader->setUniform("color", glm::vec4{0.5, 0.5, 0.5, 0.6});
+    appContext.quad->render();
+    appContext.rigidBody->renderDiagonal(*appContext.colorShader);
+    appContext.rigidBody->renderTrace(*appContext.colorShader);
+
+    appContext.phongShader->use();
+    appContext.phongShader->setUniform("viewPos", appContext.camera->getViewPosition());
+    appContext.phongShader->setUniform("view", appContext.camera->getViewMatrix());
+    appContext.phongShader->setUniform("projection", appContext.camera->getProjectionMatrix());
+    appContext.phongShader->setUniform("material.hasTexture", false);
+    appContext.phongShader->setUniform("material.albedo", glm::vec4(0.5, 0.5, 0.5, 0.6));
+    appContext.phongShader->setUniform("material.shininess", 256.f);
+    appContext.light->setupPointLight(*appContext.phongShader);
+    appContext.rigidBody->renderCube(*appContext.phongShader);
 
     appContext.frameBufferManager->unbind();
 }

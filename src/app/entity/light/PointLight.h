@@ -9,12 +9,12 @@
 
 struct PointLight {
 
-    glm::vec3 position = glm::vec3(0, 1.0f, 0);
+    glm::vec3 position = glm::vec3(10, 10.0f, 10);
     glm::vec3 color = glm::vec3(255/255.f, 214/255.f, 170/255.f);
     float strength = 1.f;
     float constantAttenuation = 1.0f;
-    float linearAttenuation = 0.7f;
-    float quadraticAttenuation = 1.8f;
+    float linearAttenuation = 0.0f;
+    float quadraticAttenuation = 0.0f;
     int chosenLight = 1;
 
     void setupPointLight(Shader& shader) {
