@@ -26,7 +26,6 @@ struct AppContext {
     std::unique_ptr<Shader> pointShader;
     std::unique_ptr<Shader> colorShader;
 
-    // TODO --- App data goes here
     std::unique_ptr<PointLight> light;
     std::unique_ptr<Point> lightBulb;
     std::unique_ptr<Quad> quad;
@@ -34,6 +33,11 @@ struct AppContext {
     std::unique_ptr<Axes> axes;
     std::unique_ptr<RigidBody> rigidBody;
 
+    bool drawCube;
+    bool drawDiagonal;
+    bool drawTrace;
+    bool drawGravity;
+    bool drawPlane;
 };
 
 #endif //OPENGL_TEMPLATE_APPCONTEXT_H

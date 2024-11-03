@@ -25,6 +25,12 @@ Scene::Scene(AppContext &appContext) : appContext(appContext) {
 
     appContext.axes = std::make_unique<Axes>();
     appContext.rigidBody = std::make_unique<RigidBody>();
+
+    appContext.drawCube = true;
+    appContext.drawDiagonal = true;
+    appContext.drawTrace = true;
+    appContext.drawGravity = true;
+    appContext.drawPlane = true;
 }
 
 void Scene::update() {
@@ -50,9 +56,10 @@ void Scene::render() {
 
     appContext.colorShader->setUniform("model", glm::rotate(glm::identity<glm::mat4>(), glm::radians(-90.0f), glm::vec3(1, 0, 0)));
     appContext.colorShader->setUniform("color", glm::vec4{0.5, 0.5, 0.5, 0.6});
-    appContext.quad->render();
-    appContext.rigidBody->renderDiagonal(*appContext.colorShader);
-    appContext.rigidBody->renderTrace(*appContext.colorShader);
+    if(appContext.drawPlane) appContext.quad->render();
+    if(appContext.drawDiagonal) appContext.rigidBody->renderDiagonal(*appContext.colorShader);
+    if(appContext.drawTrace) appContext.rigidBody->renderTrace(*appContext.colorShader);
+    if(appContext.drawGravity) appContext.rigidBody->renderGravityVector(*appContext.colorShader);
 
     appContext.phongShader->use();
     appContext.phongShader->setUniform("viewPos", appContext.camera->getViewPosition());
@@ -62,7 +69,7 @@ void Scene::render() {
     appContext.phongShader->setUniform("material.albedo", glm::vec4(0.5, 0.5, 0.5, 0.6));
     appContext.phongShader->setUniform("material.shininess", 256.f);
     appContext.light->setupPointLight(*appContext.phongShader);
-    appContext.rigidBody->renderCube(*appContext.phongShader);
+    if(appContext.drawCube) appContext.rigidBody->renderCube(*appContext.phongShader);
 
     appContext.frameBufferManager->unbind();
 }
