@@ -65,7 +65,7 @@ int main(int, char**)
 #endif
 
     // Create window with graphics context
-    GLFWwindow* window = glfwCreateWindow(1920, 1080, "OpenGL Template", 0, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Rigid Body Simulation", 0, nullptr);
     if (window == nullptr)
         return 1;
     glfwMakeContextCurrent(window);
