@@ -31,14 +31,28 @@ Scene::Scene(AppContext &appContext) : appContext(appContext) {
     appContext.drawTrace = true;
     appContext.drawGravity = true;
     appContext.drawPlane = true;
+
+    appContext.running = false;
+    appContext.parametersBlocked = false;
+    appContext.lastFrameTimeMs = glfwGetTime();
 }
 
 void Scene::update() {
     appContext.lightBulb->position = appContext.light->position;
     appContext.lightBulb->color = glm::vec4(appContext.light->color, 1);
 
-    appContext.rigidBody->advanceSimulation();
-    appContext.rigidBody->updateTrace();
+    if(appContext.running) {
+        float timeMs = glfwGetTime() * 1000;
+        int loopsToDo = static_cast<int>((timeMs - appContext.lastFrameTimeMs) / appContext.rigidBody->timeStepMs);
+        appContext.lastFrameTimeMs += loopsToDo * appContext.rigidBody->timeStepMs;
+        for (int i = 0; i < loopsToDo; i++) {
+            appContext.rigidBody->advanceByStep();
+        }
+        appContext.rigidBody->updateTrace();
+    } else {
+        appContext.lastFrameTimeMs = glfwGetTime() * 1000.f;
+    }
+
 }
 
 void Scene::render() {

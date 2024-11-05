@@ -38,6 +38,10 @@ struct AppContext {
     bool drawTrace;
     bool drawGravity;
     bool drawPlane;
+
+    float lastFrameTimeMs;
+    bool running;
+    bool parametersBlocked;
 };
 
 #endif //OPENGL_TEMPLATE_APPCONTEXT_H

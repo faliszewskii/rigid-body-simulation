@@ -8,7 +8,7 @@
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     #include "../../../dep/glad/glad_glfw.h"
 #else
-    #include "../../glew_glfw.h"
+#include "../../../dep/glew/glew_glfw.h"
 #endif
 #include <vector>
 #include "glm/vec3.hpp"
