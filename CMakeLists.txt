@@ -27,6 +27,7 @@ set(IMGUI_SRC
 )
 
 add_subdirectory(dep/glfw)
+add_subdirectory(dep/bullet3)
 
 # Include directories
 include_directories(${CMAKE_SOURCE_DIR}/dep/inc)
@@ -86,7 +87,9 @@ add_executable(rigid_body_simulation
         ${APP_SRC}
 )
 
-
+target_include_directories(rigid_body_simulation PRIVATE
+        dep/bullet3/src
+)
 # Link libraries
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")             # macOS
     target_link_libraries(rigid_body_simulation
@@ -117,5 +120,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")          # Linux
             -lXrandr
             -lXi
             -ldl
+            BulletDynamics
+            BulletCollision
+            LinearMath
     )
 endif()

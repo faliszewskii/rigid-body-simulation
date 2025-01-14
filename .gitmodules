@@ -4,3 +4,6 @@
 [submodule "dep/glfw"]
 	path = dep/glfw
 	url = git@github.com:glfw/glfw.git
+[submodule "dep/bullet3"]
+	path = dep/bullet3
+	url = git@github.com:bulletphysics/bullet3.git

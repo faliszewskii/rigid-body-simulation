@@ -46,13 +46,12 @@ void Scene::update() {
         int loopsToDo = static_cast<int>((timeMs - appContext.lastFrameTimeMs) / appContext.rigidBody->timeStepMs);
         appContext.lastFrameTimeMs += loopsToDo * appContext.rigidBody->timeStepMs;
         for (int i = 0; i < loopsToDo; i++) {
-            appContext.rigidBody->advanceByStep();
+            appContext.rigidBody->advanceByStepBullet();
         }
         appContext.rigidBody->updateTrace();
     } else {
         appContext.lastFrameTimeMs = glfwGetTime() * 1000.f;
     }
-
 }
 
 void Scene::render() {

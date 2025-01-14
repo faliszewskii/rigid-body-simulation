@@ -8,6 +8,36 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 #include "glm/gtx/string_cast.hpp"
+#include "BulletCollision/CollisionShapes/btBoxShape.h"
+
+glm::mat4 btTransformToMat4(const btTransform& transform)
+{
+    // Extract the translation and rotation components
+    btVector3 translation = transform.getOrigin();          // Get the position (translation)
+    btMatrix3x3 rotation = transform.getBasis();             // Get the rotation (3x3 matrix)
+
+    // Convert btVector3 to glm::vec3
+    glm::vec3 glmTranslation(translation.x(), translation.y(), translation.z());
+
+    // Convert btMatrix3x3 to glm::mat3
+    glm::mat3 glmRotation(
+            rotation[0][0], rotation[0][1], rotation[0][2],
+            rotation[1][0], rotation[1][1], rotation[1][2],
+            rotation[2][0], rotation[2][1], rotation[2][2]
+    );
+
+    // Construct the glm::mat4 model matrix
+    glm::mat4 modelMatrix = glm::mat4(1.0f);  // Start with an identity matrix
+
+    // Set the upper-left 3x3 rotation matrix
+    modelMatrix = glm::mat4(glm::transpose(glmRotation));
+
+    // Set the translation component (position) in the model matrix
+    modelMatrix[3] = glm::vec4(glmTranslation, 1.0f);
+
+    return modelMatrix;
+}
+
 
 RigidBody::RigidBody() {
     cubeSize = 1;
@@ -22,6 +52,38 @@ RigidBody::RigidBody() {
 
     line.updatePoints({ glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 1.0f, 1.0f) });
     gravityVector.updatePoints({ glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, -1.0f, -1.0f) });
+
+    collisionConfiguration = new btDefaultCollisionConfiguration();
+    dispatcher = new btCollisionDispatcher(collisionConfiguration);
+    overlappingPairCache = new btDbvtBroadphase();
+    solver = new btSequentialImpulseConstraintSolver;
+    dynamicsWorld = new btDiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver, collisionConfiguration);
+    glm::vec3 g = glm::normalize(glm::vec3(1));
+    g = g * -9.81f;
+    dynamicsWorld->setGravity(btVector3(g.x,g.y,g.z));
+
+    btScalar mass = cubeDensity * cubeSize * cubeSize * cubeSize;
+    auto d = cubeSize / 2;
+    boxShape = new btBoxShape(btVector3(btScalar(d), btScalar(d), btScalar(d)));
+    btVector3 inertia(0, 0, 0);
+    boxShape->calculateLocalInertia(mass, inertia);
+
+    btTransform transform;
+    transform.setIdentity();
+    transform.setOrigin(btVector3(d,d,d));
+    auto* motionState = new btDefaultMotionState(transform);
+    btRigidBody::btRigidBodyConstructionInfo rigidBodyCI(mass, motionState, boxShape, inertia);
+    cubeRigidBody = new btRigidBody(rigidBodyCI);
+
+    glm::vec3 cornerPosition = glm::vec3(-d,-d,-d);
+    btVector3 pivot = btVector3(cornerPosition.x,cornerPosition.y,cornerPosition.z);
+
+    auto* constraint = new btPoint2PointConstraint(*cubeRigidBody, pivot);
+
+    dynamicsWorld->addRigidBody(cubeRigidBody);
+    dynamicsWorld->addConstraint(constraint);
+
+    cubeRigidBody->setActivationState(DISABLE_DEACTIVATION);
 
     reset();
 }
@@ -38,18 +100,37 @@ void RigidBody::reset() {
     };
     inertiaTensorInverse = glm::inverse(inertiaTensor);
 
-    orientation = glm::quat(1,1,1,1);
-    orientation = glm::normalize(orientation);
+    orientation = glm::identity<glm::quat>();
     glm::vec3 axis = glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f));
     glm::quat rotation = glm::angleAxis(glm::radians(cubeTilt), axis);
     orientation = rotation * orientation;
 
-    auto t = glm::vec3{1,1,1};
-    angleVelocity = {t.x, t.y, t.z};
+    angleVelocity = glm::vec3(1);
     angleVelocity = glm::normalize(angleVelocity)* cubeAngleVelocity;
 
     tracePoints.clear();
     trace.updatePoints({});
+
+    auto model = glm::identity<glm::mat4>();
+    model = model * glm::scale(model, glm::vec3(cubeSize));
+    model = glm::rotate(model, -(float)(glm::asin(1.f/std::sqrt(3))), glm::vec3(1,0,0));
+    model = glm::rotate(model, (float)(std::numbers::pi/4.f), glm::vec3(0,0,1));
+    model = model * glm::toMat4(orientation);
+
+    btQuaternion bulletQuat(orientation.x, orientation.y, orientation.z, orientation.w);
+    btTransform transform(bulletQuat, btVector3(cubeSize/2,cubeSize/2,cubeSize/2));
+//    cubeRigidBody->setCenterOfMassTransform(transform);  // Set center of mass to match reset transform
+    cubeRigidBody->setWorldTransform(transform);  // Apply the reset transform to the rigid body
+
+    // Reset angular velocity
+    btVector3 bulletAngularVelocity(angleVelocity.x, angleVelocity.y, angleVelocity.z);
+    cubeRigidBody->setAngularVelocity(bulletAngularVelocity);
+
+    // Reset the cube's mass and inertia tensor
+    btVector3 inertia;
+    boxShape->calculateLocalInertia(cubeDensity * cubeSize * cubeSize * cubeSize, inertia);
+    cubeRigidBody->setMassProps(cubeDensity * cubeSize * cubeSize * cubeSize, inertia);  // Update Bullet rigid body with new mass and inertia tensor
+
 }
 
 void RigidBody::advanceByStep() {
@@ -78,6 +159,24 @@ void RigidBody::advanceByStep() {
     orientation = glm::normalize(orientation);
 }
 
+void RigidBody::advanceByStepBullet() {
+    float h = timeStepMs / 1000.f;
+
+    // Step the simulation forward (this handles all physics calculations)
+    dynamicsWorld->stepSimulation(h, 10); // Using 10 substeps for precision
+
+    // Get the updated cube orientation and angular velocity from Bullet
+    btTransform transform;
+    cubeRigidBody->getMotionState()->getWorldTransform(transform);
+    btQuaternion updatedOrientation = transform.getRotation();
+
+    btVector3 updatedAngularVelocity = cubeRigidBody->getAngularVelocity();
+
+    // Update your local variables (e.g., angleVelocity) if needed
+    angleVelocity = glm::vec3(updatedAngularVelocity.x(), updatedAngularVelocity.y(), updatedAngularVelocity.z());
+    orientation = glm::quat(updatedOrientation.w(), updatedOrientation.x(), updatedOrientation.y(), updatedOrientation.z());
+}
+
 glm::vec3 RigidBody::getGravitationalTorque(glm::quat theta) {
     if(!gravityOn) return glm::vec3(0.0f);
 
@@ -90,6 +189,15 @@ glm::vec3 RigidBody::getGravitationalTorque(glm::quat theta) {
     glm::vec3 N = {qN.x, qN.y, qN.z};
     return N;
 }
+
+glm::vec3 RigidBody::getAngularAcceleration(glm::vec3 F, glm::vec3 w) {
+    return inertiaTensorInverse * (F + glm::cross(inertiaTensor * w, w) );
+}
+
+glm::quat RigidBody::getOrientationChange(glm::quat theta, glm::vec3 w) {
+    return theta * glm::quat(0, w / 2.f);
+}
+
 
 void RigidBody::updateTrace() {
     auto q = orientation * glm::vec3(cubeSize);
@@ -106,10 +214,15 @@ void RigidBody::updateTrace() {
 void RigidBody::renderCube(Shader &shader) {
     auto model = glm::identity<glm::mat4>();
     model = model * glm::scale(model, glm::vec3(cubeSize));
-    model = glm::rotate(model, -(float)(glm::asin(1.f/std::sqrt(3))), glm::vec3(1,0,0));
-    model = glm::rotate(model, (float)(std::numbers::pi/4.f), glm::vec3(0,0,1));
-    model = model * glm::toMat4(orientation);
-    shader.setUniform("model", model);
+//    model = glm::rotate(model, -(float)(glm::asin(1.f/std::sqrt(3))), glm::vec3(1,0,0));
+//    model = glm::rotate(model, (float)(std::numbers::pi/4.f), glm::vec3(0,0,1));
+//    auto quat = cubeRigidBody->getWorldTransform().getRotation();
+//    auto tran = cubeRigidBody->getWorldTransform().getOrigin();
+//    glm::quat q(quat.getW(), quat.getX(),quat.getY(), quat.getZ());
+//    model = model * glm::toMat4(q);
+//    model = glm::translate(model, glm::vec3(tran.getX(), tran.getY(), tran.getZ()));
+
+    shader.setUniform("model", btTransformToMat4(cubeRigidBody->getWorldTransform()));
     cube.render();
 }
 
@@ -146,12 +259,4 @@ void RigidBody::renderGravityVector(Shader &shader) {
     }
 
     gravityVector.render();
-}
-
-glm::vec3 RigidBody::getAngularAcceleration(glm::vec3 F, glm::vec3 w) {
-    return inertiaTensorInverse * (F + glm::cross(inertiaTensor * w, w) );
-}
-
-glm::quat RigidBody::getOrientationChange(glm::quat theta, glm::vec3 w) {
-    return theta * glm::quat(0, w / 2.f);
 }

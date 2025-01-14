@@ -10,6 +10,7 @@
 #include "../entity/cube/Cube.h"
 #include "../entity/line/Line.h"
 #include "../../opengl/shader/Shader.h"
+#include "btBulletDynamicsCommon.h"
 
 class RigidBody {
     Cube cube;
@@ -23,6 +24,15 @@ class RigidBody {
     glm::vec3 angleVelocity;
     glm::mat3 inertiaTensor;
     glm::mat3 inertiaTensorInverse;
+
+    btDefaultCollisionConfiguration* collisionConfiguration;
+    btCollisionDispatcher* dispatcher;
+    btBroadphaseInterface* overlappingPairCache;
+    btSequentialImpulseConstraintSolver* solver;
+    btDiscreteDynamicsWorld* dynamicsWorld;
+
+    btBoxShape* boxShape;
+    btRigidBody* cubeRigidBody;
 
 public:
     float cubeSize;
@@ -52,6 +62,8 @@ public:
     glm::vec3 getAngularAcceleration(glm::vec3 F, glm::vec3 w);
 
     glm::quat getOrientationChange(glm::quat theta, glm::vec3 w);
+
+    void advanceByStepBullet();
 };
 
 
