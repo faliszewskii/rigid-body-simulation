@@ -75,7 +75,8 @@ set(APP_SRC
         src/app/entity/cube/Cube.h
         src/app/rigid/RigidBody.h
         src/app/rigid/RigidBody.cpp
-        src/app/entity/line/Line.h)
+        src/app/entity/line/Line.h
+        src/app/bullet/Rk4Wolrd.h)
 
 # Add executables
 add_executable(rigid_body_simulation

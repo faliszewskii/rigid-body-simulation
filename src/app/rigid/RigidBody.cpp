@@ -38,6 +38,33 @@ glm::mat4 btTransformToMat4(const btTransform& transform)
     return modelMatrix;
 }
 
+btTransform mat4ToBtTransform(const glm::mat4& modelMatrix)
+{
+    // Extract the translation component from glm::mat4
+    glm::vec3 glmTranslation(modelMatrix[3][0], modelMatrix[3][1], modelMatrix[3][2]);
+
+    // Extract the upper-left 3x3 matrix for rotation
+    glm::mat3 glmRotation = glm::transpose(glm::mat3(modelMatrix));
+
+    // Convert glm::vec3 to btVector3 for translation
+    btVector3 translation(glmTranslation.x, glmTranslation.y, glmTranslation.z);
+
+    // Convert glm::mat3 to btMatrix3x3 for rotation
+    btMatrix3x3 rotation(
+            glmRotation[0][0], glmRotation[0][1], glmRotation[0][2],
+            glmRotation[1][0], glmRotation[1][1], glmRotation[1][2],
+            glmRotation[2][0], glmRotation[2][1], glmRotation[2][2]
+    );
+
+    // Construct the btTransform
+    btTransform transform;
+    transform.setOrigin(translation); // Set translation
+    transform.setBasis(rotation);    // Set rotation
+
+    return transform;
+}
+
+
 
 RigidBody::RigidBody() {
     cubeSize = 1;
@@ -80,15 +107,20 @@ RigidBody::RigidBody() {
 
     auto* constraint = new btPoint2PointConstraint(*cubeRigidBody, pivot);
 
-    dynamicsWorld->addRigidBody(cubeRigidBody);
-    dynamicsWorld->addConstraint(constraint);
 
     cubeRigidBody->setActivationState(DISABLE_DEACTIVATION);
+    cubeRigidBody->setFriction(.0);
+    cubeRigidBody->setRollingFriction(.0);
+    cubeRigidBody->setSpinningFriction(.0);
+    cubeRigidBody->setAnisotropicFriction(boxShape->getAnisotropicRollingFrictionDirection(), btCollisionObject::CF_ANISOTROPIC_FRICTION_DISABLED);
 
+    dynamicsWorld->addConstraint(constraint);
     reset();
 }
 
 void RigidBody::reset() {
+    dynamicsWorld->removeRigidBody(cubeRigidBody);
+
     float cube5 = cubeSize*cubeSize*cubeSize*cubeSize*cubeSize;
     float itOff = - cube5 * cubeDensity / 4.f;
     float itDiag = 2.f * cube5 * cubeDensity / 3.f;
@@ -112,25 +144,25 @@ void RigidBody::reset() {
     trace.updatePoints({});
 
     auto model = glm::identity<glm::mat4>();
-    model = model * glm::scale(model, glm::vec3(cubeSize));
-    model = glm::rotate(model, -(float)(glm::asin(1.f/std::sqrt(3))), glm::vec3(1,0,0));
-    model = glm::rotate(model, (float)(std::numbers::pi/4.f), glm::vec3(0,0,1));
     model = model * glm::toMat4(orientation);
+    model = glm::translate(model, glm::vec3(1.f/2));
 
-    btQuaternion bulletQuat(orientation.x, orientation.y, orientation.z, orientation.w);
-    btTransform transform(bulletQuat, btVector3(cubeSize/2,cubeSize/2,cubeSize/2));
+//    btQuaternion bulletQuat(orientation.x, orientation.y, orientation.z, orientation.w);
+//    btTransform transform(bulletQuat, btVector3(cubeSize/2,cubeSize/2,cubeSize/2));
 //    cubeRigidBody->setCenterOfMassTransform(transform);  // Set center of mass to match reset transform
-    cubeRigidBody->setWorldTransform(transform);  // Apply the reset transform to the rigid body
+    cubeRigidBody->setWorldTransform(mat4ToBtTransform(model));  // Apply the reset transform to the rigid body
 
     // Reset angular velocity
     btVector3 bulletAngularVelocity(angleVelocity.x, angleVelocity.y, angleVelocity.z);
     cubeRigidBody->setAngularVelocity(bulletAngularVelocity);
+    cubeRigidBody->setLinearVelocity(btVector3(0,0,0));
 
     // Reset the cube's mass and inertia tensor
     btVector3 inertia;
     boxShape->calculateLocalInertia(cubeDensity * cubeSize * cubeSize * cubeSize, inertia);
     cubeRigidBody->setMassProps(cubeDensity * cubeSize * cubeSize * cubeSize, inertia);  // Update Bullet rigid body with new mass and inertia tensor
 
+    dynamicsWorld->addRigidBody(cubeRigidBody);
 }
 
 void RigidBody::advanceByStep() {
@@ -213,16 +245,12 @@ void RigidBody::updateTrace() {
 
 void RigidBody::renderCube(Shader &shader) {
     auto model = glm::identity<glm::mat4>();
-    model = model * glm::scale(model, glm::vec3(cubeSize));
-//    model = glm::rotate(model, -(float)(glm::asin(1.f/std::sqrt(3))), glm::vec3(1,0,0));
-//    model = glm::rotate(model, (float)(std::numbers::pi/4.f), glm::vec3(0,0,1));
-//    auto quat = cubeRigidBody->getWorldTransform().getRotation();
-//    auto tran = cubeRigidBody->getWorldTransform().getOrigin();
-//    glm::quat q(quat.getW(), quat.getX(),quat.getY(), quat.getZ());
-//    model = model * glm::toMat4(q);
-//    model = glm::translate(model, glm::vec3(tran.getX(), tran.getY(), tran.getZ()));
+    model = glm::rotate(model, -(float)(glm::asin(1.f/std::sqrt(3))), glm::vec3(1,0,0));
+    model = glm::rotate(model, (float)(std::numbers::pi/4.f), glm::vec3(0,0,1));
+    model = glm::scale(model, glm::vec3(cubeSize));
+    model = model * btTransformToMat4(cubeRigidBody->getWorldTransform());
 
-    shader.setUniform("model", btTransformToMat4(cubeRigidBody->getWorldTransform()));
+    shader.setUniform("model", model);
     cube.render();
 }
 
