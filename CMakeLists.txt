@@ -76,7 +76,11 @@ set(APP_SRC
         src/app/rigid/RigidBody.h
         src/app/rigid/RigidBody.cpp
         src/app/entity/line/Line.h
-        src/app/bullet/Rk4Wolrd.h)
+        src/app/spring/SpringBody.cpp
+        src/app/spring/SpringBody.h
+        src/app/physics/PhysicsBody.h
+        src/app/bullet/btTransformHelper.h
+        src/app/spring/TreePart.h)
 
 # Add executables
 add_executable(rigid_body_simulation
@@ -110,6 +114,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")        # Windows
             glm::glm
             glfw
             ${OPENGL_LIBRARIES}
+            BulletDynamics
+            BulletCollision
+            LinearMath
     )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")          # Linux
     target_link_libraries(rigid_body_simulation

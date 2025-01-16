@@ -25,6 +25,7 @@ Scene::Scene(AppContext &appContext) : appContext(appContext) {
 
     appContext.axes = std::make_unique<Axes>();
     appContext.rigidBody = std::make_unique<RigidBody>();
+    appContext.springBody = std::make_unique<SpringBody>();
 
     appContext.drawCube = true;
     appContext.drawDiagonal = true;
@@ -35,22 +36,36 @@ Scene::Scene(AppContext &appContext) : appContext(appContext) {
     appContext.running = false;
     appContext.parametersBlocked = false;
     appContext.lastFrameTimeMs = glfwGetTime();
+    appContext.chosenScene = AppContext::Spring;
 }
 
 void Scene::update() {
     appContext.lightBulb->position = appContext.light->position;
     appContext.lightBulb->color = glm::vec4(appContext.light->color, 1);
 
-    if(appContext.running) {
-        float timeMs = glfwGetTime() * 1000;
-        int loopsToDo = static_cast<int>((timeMs - appContext.lastFrameTimeMs) / appContext.rigidBody->timeStepMs);
-        appContext.lastFrameTimeMs += loopsToDo * appContext.rigidBody->timeStepMs;
-        for (int i = 0; i < loopsToDo; i++) {
-            appContext.rigidBody->advanceByStepBullet();
+    if(appContext.chosenScene == AppContext::Cube) {
+        if(appContext.running) {
+            float timeMs = glfwGetTime() * 1000;
+            int loopsToDo = static_cast<int>((timeMs - appContext.lastFrameTimeMs) / appContext.rigidBody->timeStepMs);
+            appContext.lastFrameTimeMs += loopsToDo * appContext.rigidBody->timeStepMs;
+            for (int i = 0; i < loopsToDo; i++) {
+                appContext.rigidBody->advanceByStepBullet();
+            }
+            appContext.rigidBody->updateTrace();
+        } else {
+            appContext.lastFrameTimeMs = glfwGetTime() * 1000.f;
         }
-        appContext.rigidBody->updateTrace();
-    } else {
-        appContext.lastFrameTimeMs = glfwGetTime() * 1000.f;
+    } else if (appContext.chosenScene == AppContext::Spring) {
+        if(appContext.running) {
+            float timeMs = glfwGetTime() * 1000;
+            int loopsToDo = static_cast<int>((timeMs - appContext.lastFrameTimeMs) / appContext.springBody->timeStepMs);
+            appContext.lastFrameTimeMs += loopsToDo * appContext.springBody->timeStepMs;
+            for (int i = 0; i < loopsToDo; i++) {
+                appContext.springBody->advanceByStep(timeMs);
+            }
+        } else {
+            appContext.lastFrameTimeMs = glfwGetTime() * 1000.f;
+        }
     }
 }
 
@@ -70,19 +85,32 @@ void Scene::render() {
     appContext.colorShader->setUniform("model", glm::rotate(glm::identity<glm::mat4>(), glm::radians(-90.0f), glm::vec3(1, 0, 0)));
     appContext.colorShader->setUniform("color", glm::vec4{0.5, 0.5, 0.5, 0.6});
     if(appContext.drawPlane) appContext.quad->render();
-    if(appContext.drawDiagonal) appContext.rigidBody->renderDiagonal(*appContext.colorShader);
-    if(appContext.drawTrace) appContext.rigidBody->renderTrace(*appContext.colorShader);
-    if(appContext.drawGravity) appContext.rigidBody->renderGravityVector(*appContext.colorShader);
 
-    appContext.phongShader->use();
-    appContext.phongShader->setUniform("viewPos", appContext.camera->getViewPosition());
-    appContext.phongShader->setUniform("view", appContext.camera->getViewMatrix());
-    appContext.phongShader->setUniform("projection", appContext.camera->getProjectionMatrix());
-    appContext.phongShader->setUniform("material.hasTexture", false);
-    appContext.phongShader->setUniform("material.albedo", glm::vec4(0.5, 0.5, 0.5, 0.6));
-    appContext.phongShader->setUniform("material.shininess", 256.f);
-    appContext.light->setupPointLight(*appContext.phongShader);
-    if(appContext.drawCube) appContext.rigidBody->renderCube(*appContext.phongShader);
+    if(appContext.chosenScene == AppContext::Cube) {
+        if(appContext.drawDiagonal) appContext.rigidBody->renderDiagonal(*appContext.colorShader);
+        if(appContext.drawTrace) appContext.rigidBody->renderTrace(*appContext.colorShader);
+        if(appContext.drawGravity) appContext.rigidBody->renderGravityVector(*appContext.colorShader);
+
+        appContext.phongShader->use();
+        appContext.phongShader->setUniform("viewPos", appContext.camera->getViewPosition());
+        appContext.phongShader->setUniform("view", appContext.camera->getViewMatrix());
+        appContext.phongShader->setUniform("projection", appContext.camera->getProjectionMatrix());
+        appContext.phongShader->setUniform("material.hasTexture", false);
+        appContext.phongShader->setUniform("material.albedo", glm::vec4(0.5, 0.5, 0.5, 0.6));
+        appContext.phongShader->setUniform("material.shininess", 256.f);
+        appContext.light->setupPointLight(*appContext.phongShader);
+        if(appContext.drawCube) appContext.rigidBody->renderCube(*appContext.phongShader);
+    } else if(appContext.chosenScene == AppContext::Spring) {
+
+        appContext.phongShader->use();
+        appContext.phongShader->setUniform("viewPos", appContext.camera->getViewPosition());
+        appContext.phongShader->setUniform("view", appContext.camera->getViewMatrix());
+        appContext.phongShader->setUniform("projection", appContext.camera->getProjectionMatrix());
+        appContext.phongShader->setUniform("material.hasTexture", false);
+        appContext.phongShader->setUniform("material.shininess", 256.f);
+        appContext.light->setupPointLight(*appContext.phongShader);
+        appContext.springBody->render(*appContext.phongShader);
+    }
 
     appContext.frameBufferManager->unbind();
 }

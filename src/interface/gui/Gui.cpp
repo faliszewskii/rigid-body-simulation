@@ -20,38 +20,47 @@ void Gui::render() {
         appContext.parametersBlocked = false;
         appContext.running = false;
         appContext.rigidBody->reset();
+        appContext.springBody->reset();
         appContext.lastFrameTimeMs = glfwGetTime() * 1000;
     }
 
-    if(ImGui::CollapsingHeader("Simulation")) {
-        ImGui::Checkbox("Gravity On", &appContext.rigidBody->gravityOn);
-        ImGui::DragFloat("Simulation Step (ms)", &appContext.rigidBody->timeStepMs, 0.1f, 1.f, 100.f);
-    }
+    const char* s[] = {"Cube", "Spring"};
+    ImGui::Combo("Chosen Scene",reinterpret_cast<int*>(&appContext.chosenScene), s,2);
 
-    if(ImGui::CollapsingHeader("Rigid Body")) {
-        ImGui::BeginDisabled(appContext.parametersBlocked);
-        {
-            bool changed = false;
-            changed |= ImGui::DragFloat("Size", &appContext.rigidBody->cubeSize, 0.01f, 0.1f, 5.0f);
-            changed |= ImGui::DragFloat("Density", &appContext.rigidBody->cubeDensity, 0.01f, 0.1f, 5.0f);
-            changed |= ImGui::DragFloat("Tilt (°)", &appContext.rigidBody->cubeTilt, 0.01f, -180, 180);
-            changed |= ImGui::DragFloat("Angular Velocity", &appContext.rigidBody->cubeAngleVelocity, 0.1f, 0, 100);
-            if(changed) appContext.rigidBody->reset();
-            ImGui::EndDisabled();
+    if(appContext.chosenScene == AppContext::Cube) {
+        if(ImGui::CollapsingHeader("Simulation")) {
+            ImGui::Checkbox("Gravity On", &appContext.rigidBody->gravityOn);
+            ImGui::DragFloat("Simulation Step (ms)", &appContext.rigidBody->timeStepMs, 0.1f, 1.f, 100.f);
         }
-        ImGui::DragInt("Trace Point Count", &appContext.rigidBody->traceSize, 1, 100, 2000);
-    }
 
-    if(ImGui::CollapsingHeader("Display")) {
-        ImGui::Checkbox("Draw Cube", &appContext.drawCube);
-        ImGui::Checkbox("Draw Diagonal", &appContext.drawDiagonal);
-        ImGui::Checkbox("Draw Cube Trace", &appContext.drawTrace);
-        ImGui::Checkbox("Draw Plane", &appContext.drawPlane);
-        ImGui::Checkbox("Draw Gravity Vector", &appContext.drawGravity);
-    }
+        if(ImGui::CollapsingHeader("Rigid Body")) {
+            ImGui::BeginDisabled(appContext.parametersBlocked);
+            {
+                bool changed = false;
+                changed |= ImGui::DragFloat("Size", &appContext.rigidBody->cubeSize, 0.01f, 0.1f, 5.0f);
+                changed |= ImGui::DragFloat("Density", &appContext.rigidBody->cubeDensity, 0.01f, 0.1f, 5.0f);
+                changed |= ImGui::DragFloat("Tilt (°)", &appContext.rigidBody->cubeTilt, 0.01f, -180, 180);
+                changed |= ImGui::DragFloat("Angular Velocity", &appContext.rigidBody->cubeAngleVelocity, 0.1f, 0, 100);
+                if(changed) appContext.rigidBody->reset();
+                ImGui::EndDisabled();
+            }
+            ImGui::DragInt("Trace Point Count", &appContext.rigidBody->traceSize, 1, 100, 2000);
+        }
 
-    if(ImGui::CollapsingHeader("Light"))
-        renderLightUI(*appContext.light);
+        if(ImGui::CollapsingHeader("Display")) {
+            ImGui::Checkbox("Draw Cube", &appContext.drawCube);
+            ImGui::Checkbox("Draw Diagonal", &appContext.drawDiagonal);
+            ImGui::Checkbox("Draw Cube Trace", &appContext.drawTrace);
+            ImGui::Checkbox("Draw Plane", &appContext.drawPlane);
+            ImGui::Checkbox("Draw Gravity Vector", &appContext.drawGravity);
+        }
+
+        if(ImGui::CollapsingHeader("Light"))
+            renderLightUI(*appContext.light);
+
+    } else if( appContext.chosenScene == AppContext::Spring) {
+        ImGui::DragFloat("Wind Strength", &appContext.springBody->windStrength, 0.01, 0, 100);
+    }
 
     ImGui::End();
 }

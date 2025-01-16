@@ -14,6 +14,7 @@
 #include "entity/light/PointLight.h"
 #include "entity/point/Point.h"
 #include "rigid/RigidBody.h"
+#include "spring/SpringBody.h"
 
 struct AppContext {
     AppContext() = default;
@@ -32,6 +33,7 @@ struct AppContext {
 
     std::unique_ptr<Axes> axes;
     std::unique_ptr<RigidBody> rigidBody;
+    std::unique_ptr<SpringBody> springBody;
 
     bool drawCube;
     bool drawDiagonal;
@@ -42,6 +44,11 @@ struct AppContext {
     float lastFrameTimeMs;
     bool running;
     bool parametersBlocked;
+
+    enum Scene {
+        Cube = 0,
+        Spring = 1
+    } chosenScene;
 };
 
 #endif //OPENGL_TEMPLATE_APPCONTEXT_H
